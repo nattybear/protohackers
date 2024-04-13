@@ -3,7 +3,6 @@
 module Main where
 
 import           Control.Concurrent
-import           Control.Monad
 import           Data.Aeson
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy  as L
@@ -18,13 +17,14 @@ main = do
   sock <- socket AF_INET Stream 0
   bind sock (SockAddrInet 4000 0)
   listen sock 5
-  forever (session sock)
+  session sock
 
 session :: Socket -> IO ()
 session sock = do
   (conn, _) <- accept sock
   handle <- socketToHandle conn ReadWriteMode
-  process handle
+  _ <- forkIO (process handle)
+  session sock
 
 process :: Handle -> IO ()
 process handle = do
@@ -40,5 +40,4 @@ process handle = do
         Just (Request _ n) -> do
           let response = Response "isPrime" (isPrime n)
           L.hPut handle (encode response <> "\n")
-          _ <- forkIO (process handle)
-          return ()
+          process handle
